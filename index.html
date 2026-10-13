@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>COMPLEMENTO PARA CARTOGRAFIA 1.6</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#18212b;--muted:#65717d;--accent:#164b75;--line:#d9e0e6;--ok:#1f6b45;--warn:#8a5a00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+.wrap{max-width:1500px;margin:auto;padding:14px}
+h1{font-size:1.45rem;margin:4px 0 4px}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+label{display:block;font-size:.84rem;font-weight:650;margin:9px 0 5px}
+input,select,button{width:100%;min-height:46px;border:1px solid #cbd4dc;border-radius:10px;padding:10px 12px;font-size:16px;background:#fff;color:var(--ink)}
+.coord{display:grid;grid-template-columns:1fr 1fr 1.25fr .8fr;gap:6px}
+.coord-help{font-size:.75rem;color:var(--muted);margin-top:5px}
+button{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;cursor:pointer;margin-top:12px}
+button.secondary{background:#eef3f7;color:var(--ink);border-color:#cbd4dc}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.note{font-size:.76rem;color:var(--muted);line-height:1.4;margin-top:9px}
+.status{font-size:.82rem;margin-top:9px;min-height:20px}
+#map{height:680px;min-height:520px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#d9e2e8}
+.results{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.metric{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fbfcfd}
+.metric .k{font-size:.76rem;color:var(--muted);margin-bottom:4px}
+.metric .v{font-size:1.12rem;font-weight:800}
+.diagram{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfcfd}
+svg{width:100%;height:auto;max-height:410px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.78rem;color:var(--muted);margin-top:5px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.zone-label{background:transparent;border:0}.zone-label span{display:block;background:#fff;border:1px solid #164b75;border-radius:7px;padding:2px 6px;font-weight:800;font-size:12px;color:#164b75;box-shadow:0 1px 4px rgba(0,0,0,.18);text-align:center}.warn{color:var(--warn)}
+.ok{color:var(--ok)}
+footer{font-size:.74rem;color:var(--muted);line-height:1.45;margin-top:13px}
+
+.compass-control{width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.94);border:2px solid #263746;box-shadow:0 2px 8px rgba(0,0,0,.28);position:relative;font-weight:800;color:#18212b;user-select:none}
+.compass-control .n,.compass-control .s,.compass-control .e,.compass-control .o{position:absolute;font-size:13px}
+.compass-control .n{top:4px;left:50%;transform:translateX(-50%);color:#b3261e}.compass-control .s{bottom:4px;left:50%;transform:translateX(-50%)}.compass-control .e{right:6px;top:50%;transform:translateY(-50%)}.compass-control .o{left:6px;top:50%;transform:translateY(-50%)}
+.compass-control .needle{position:absolute;left:50%;top:50%;width:4px;height:58px;transform:translate(-50%,-50%);background:linear-gradient(to bottom,#b3261e 0 50%,#263746 50% 100%);clip-path:polygon(50% 0,100% 48%,70% 48%,70% 100%,30% 100%,30% 48%,0 48%)}
+.point-popup{font-size:13px;line-height:1.5}.point-popup .title{font-size:15px;font-weight:800;color:#164b75;margin-bottom:4px}.point-popup table{border-collapse:collapse;width:100%}.point-popup td{padding:2px 3px;border-bottom:1px solid #eee}.point-popup td:first-child{font-weight:700;white-space:nowrap}
+
+@media(max-width:760px){
+ .wrap{padding:10px}.grid{grid-template-columns:1fr}.card{padding:12px}
+ #map{height:520px;min-height:420px}.results{grid-template-columns:1fr 1fr}
+ .metric:last-child{grid-column:1/-1}
+}
+
+.autor{margin-top:14px;text-align:left;font-size:.82rem;color:var(--muted);font-weight:600}
+.angle-readout{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:15px}.angle-readout span{padding:8px 12px;background:#f0f3f7;border-radius:8px;font-weight:800} .leaflet-popup-content{min-width:260px} </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>COMPLEMENTO PARA CARTOGRAFIA 1.6</h1>
+  <div class="sub">Ingresá latitud y longitud → aparece un punto en el mapa con todos los datos cartográficos y magnéticos.</div>
+
+  <div class="grid">
+    <section class="card">
+      <label>Latitud (grados, minutos y segundos)</label>
+      <div class="coord" aria-label="Latitud en grados minutos y segundos">
+        <input id="latDeg" type="number" min="0" max="90" step="1" value="34" placeholder="°" inputmode="numeric" aria-label="Grados de latitud">
+        <input id="latMin" type="number" min="0" max="59" step="1" value="36" placeholder="′" inputmode="numeric" aria-label="Minutos de latitud">
+        <input id="latSec" type="number" min="0" max="59.999" step="0.1" value="13.32" placeholder="″" inputmode="decimal" aria-label="Segundos de latitud">
+        <select id="latHem" aria-label="Hemisferio de latitud"><option value="N">N</option><option value="S" selected>S</option></select>
+      </div>
+
+      <label>Longitud (grados, minutos y segundos)</label>
+      <div class="coord" aria-label="Longitud en grados minutos y segundos">
+        <input id="lonDeg" type="number" min="0" max="180" step="1" value="58" placeholder="°" inputmode="numeric" aria-label="Grados de longitud">
+        <input id="lonMin" type="number" min="0" max="59" step="1" value="22" placeholder="′" inputmode="numeric" aria-label="Minutos de longitud">
+        <input id="lonSec" type="number" min="0" max="59.999" step="0.1" value="53.76" placeholder="″" inputmode="decimal" aria-label="Segundos de longitud">
+        <select id="lonHem" aria-label="Hemisferio de longitud"><option value="E">E</option><option value="O" selected>O</option></select>
+      </div>
+      <div class="coord-help">Formato: <b>34° 36′ 13.32″ S</b> · <b>58° 22′ 53.76″ O</b></div>
+
+      <div class="row">
+        <div>
+          <label for="alt">Altura automática (m s. n. m.)</label>
+          <input id="alt" type="number" value="0" readonly title="Se obtiene automáticamente al calcular o hacer clic en el mapa">
+        </div>
+        <div>
+          <label for="date">Fecha</label>
+          <input id="date" type="date" value="2026-10-13">
+        </div>
+      </div>
+
+      <label for="faja">Sistema de cuadrícula</label>
+      <select id="faja">
+        <option value="auto">Argentina Gauss-Krüger — automático</option>
+        <option value="1">Faja 1 — MC 72° O</option>
+        <option value="2">Faja 2 — MC 69° O</option>
+        <option value="3">Faja 3 — MC 66° O</option>
+        <option value="4">Faja 4 — MC 63° O</option>
+        <option value="5">Faja 5 — MC 60° O</option>
+        <option value="6" selected>Faja 6 — MC 57° O</option>
+        <option value="7">Faja 7 — MC 54° O</option>
+        <option value="none">Sin cuadrícula — NG = NC</option>
+      </select>
+
+      <div class="note" style="margin-top:10px"><b>También podés tocar directamente el mapa.</b> La aplicación toma ese punto, convierte la coordenada a GMS, identifica automáticamente la faja Gauss-Krüger más cercana y muestra sus datos.</div>
+      <button id="calc">Calcular</button>
+      <button id="reset" class="secondary" type="button">Restablecer</button>
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <div class="note">
+        Ingresá las coordenadas directamente en <b>grados, minutos y segundos (GMS)</b>. No hace falta usar valores negativos: seleccioná N/S para latitud y E/O para longitud. La desviación se calcula siguiendo
+        el esquema de la imagen: <b>Δ = δ − γ</b>, donde δ es la declinación magnética
+        y γ la convergencia de meridianos.
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="map"></div>
+      <div class="results">
+        <div class="metric"><div class="k">Declinación magnética δ</div><div class="v" id="decl">—</div></div>
+        <div class="metric"><div class="k">Convergencia γ</div><div class="v" id="conv">—</div></div>
+        <div class="metric"><div class="k">Desviación magnética Δ</div><div class="v" id="dev">—</div></div>
+      </div>
+      <div class="results">
+        <div class="metric"><div class="k">Variación anual</div><div class="v" id="annual">—</div></div>
+        <div class="metric"><div class="k">Modelo</div><div class="v" id="model">WMM2025</div></div>
+        <div class="metric"><div class="k">Faja / meridiano central</div><div class="v" id="zone">—</div></div>
+      </div>
+
+      <div class="diagram">
+        <div style="text-align:center;font-weight:850;font-size:1.05rem;margin-bottom:2px">DIAGRAMA DE DECLINACIÓN, DESVIACIÓN Y NORTES</div>
+        <div style="text-align:center;font-size:.76rem;color:var(--muted);margin-bottom:6px">NC = Norte verdadero · NG = Norte de cuadrícula · NM = Norte magnético</div>
+        <svg viewBox="0 0 600 390" role="img" aria-label="Diagrama de nortes con ángulos exagerados y valores reales">
+          <defs><marker id="northArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#26394d"/></marker></defs>
+          <g id="northDiagram" transform="translate(300 327)">
+            <circle cx="0" cy="0" r="5" fill="#202d3d"/>
+            <line id="nTrue" x1="0" y1="0" x2="0" y2="-220" stroke="#1c5b9b" stroke-width="4" marker-end="url(#northArrow)"/>
+            <line id="nGrid" x1="0" y1="0" x2="0" y2="-220" stroke="#53606c" stroke-width="4" marker-end="url(#northArrow)"/>
+            <line id="nMag" x1="0" y1="0" x2="0" y2="-220" stroke="#b3261e" stroke-width="4" marker-end="url(#northArrow)"/>
+            <g id="angleArcs"></g>
+            <g id="northLabels"></g>
+          </g>
+          <text x="300" y="378" text-anchor="middle" font-size="12" fill="#596777">Ángulos exagerados para visualización · valores numéricos reales</text>
+        </svg>
+        <div id="angleValues" class="note" style="text-align:center;font-weight:750;margin:8px 0">δ — · γ — · Δ —</div><div class="legend"><span><i class="dot" style="background:#1c5b9b"></i>NC verdadero</span><span><i class="dot" style="background:#555"></i>NG cuadrícula</span><span><i class="dot" style="background:#b3261e"></i>NM magnético</span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    WMM2025 es el modelo magnético mundial vigente para 2025–2030. La app calcula la
+    declinación con WMM2025 y la variación anual como diferencia entre la declinación
+    de la fecha elegida y la de un año después. Para Argentina, la cuadrícula usa las
+    fajas oficiales Gauss-Krüger de 3° cuando se selecciona una faja.
+    El mapa y la consulta automática de elevación requieren conexión a Internet. La altura se obtiene de un modelo digital de elevación (ASTER 30 m) y es una estimación del terreno, no una medición topográfica de precisión.
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script type="module">
+let magvar = null;
+let magneticLoadError = null;
+const magneticReady = import("https://cdn.jsdelivr.net/npm/magvar@2.2.0/+esm")
+  .then(mod => { magvar = mod.magvar || mod.default?.magvar || mod.default; if(typeof magvar!=="function") throw new Error("Formato del módulo magnético no compatible"); })
+  .catch(err => { magneticLoadError=err; console.error("Modelo WMM:",err); });
+
+const map = L.map("map").setView([-38.4,-64.2], 4.5);
+const googleTiles=L.tileLayer("https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", {
+  maxZoom: 20, subdomains:["mt0","mt1","mt2","mt3"], attribution: "Google"
+}).addTo(map);
+let tileErrors=0;
+googleTiles.on("tileerror",()=>{
+  if(++tileErrors===5){
+    map.removeLayer(googleTiles);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+    document.getElementById("status").textContent="No se pudo cargar Google híbrido; se activó un mapa alternativo.";
+  }
+});
+
+const CompassControl = L.Control.extend({
+  options:{position:"bottomright"},
+  onAdd:function(){
+    const d=L.DomUtil.create("div","compass-control");
+    d.innerHTML='<span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="o">O</span><span class="needle"></span>';
+    L.DomEvent.disableClickPropagation(d);
+    return d;
+  }
+});
+new CompassControl().addTo(map);
+setTimeout(()=>map.invalidateSize(),150);
+
+let marker = L.circleMarker([-34.6037,-58.3816], {radius:9,color:"#ffffff",weight:3,fillColor:"#d71920",fillOpacity:1}).addTo(map);
+let polygonLayer = null;
+let currentCalculation=0;
+
+const fajas = {1:-72,2:-69,3:-66,4:-63,5:-60,6:-57,7:-54};
+const limitesFajas = {1:[-73.5,-70.5],2:[-70.5,-67.5],3:[-67.5,-64.5],4:[-64.5,-61.5],5:[-61.5,-58.5],6:[-58.5,-55.5],7:[-55.5,-52.5]};
+
+// Franjas esquemáticas de las fajas Gauss-Krüger. Sirven para visualizar
+// en el mapa dónde queda cada faja; la determinación automática se hace
+// por la longitud del punto seleccionado.
+const fajaLayers = L.layerGroup().addTo(map);
+for (const [z,mc] of Object.entries(fajas)) {
+  const [west,east] = limitesFajas[z];
+  const rect = L.rectangle([[-56,west],[-20,east]], {
+    color: '#164b75', weight: 1, opacity: 0.55, fillOpacity: 0.035,
+    interactive: false
+  }).addTo(fajaLayers);
+  rect.bindTooltip(`Faja ${z} · MC ${Math.abs(mc)}° O`, {sticky:true});
+  L.marker([-22.2, mc], {
+    interactive:false,
+    icon:L.divIcon({className:'zone-label',html:`<span>F${z}</span>`,iconSize:[34,22],iconAnchor:[17,11]})
+  }).addTo(fajaLayers);
+}
+
+function fajaPorLongitud(lon){
+  if(lon < -73.5 || lon > -52.5) return null;
+  let best=null, dist=Infinity;
+  for(const [z,mc] of Object.entries(fajas)){
+    const dd=Math.abs(lon-mc);
+    if(dd<dist){dist=dd;best=Number(z);}
+  }
+  return best;
+}
+function fajaInfo(z){
+  if(z===null) return null;
+  const mc=fajas[z];
+  return {z, mc, rango:limitesFajas[z]};
+}
+
+function autoFaja(lon){
+  let best = 1, d = Infinity;
+  for (const [k,mc] of Object.entries(fajas)){
+    const dd = Math.abs(lon - mc);
+    if (dd < d){ d=dd; best=Number(k); }
+  }
+  return best;
+}
+function wrap180(x){ return ((x+180)%360+360)%360-180; }
+function dmsToDecimal(degId,minId,secId,hemId,maxDeg){
+  const d=Number(document.getElementById(degId).value);
+  const m=Number(document.getElementById(minId).value);
+  const sec=Number(document.getElementById(secId).value);
+  const hem=document.getElementById(hemId).value;
+  if(!Number.isFinite(d)||!Number.isFinite(m)||!Number.isFinite(sec)||d<0||d>maxDeg||m<0||m>=60||sec<0||sec>=60){ return NaN; }
+  if(d===maxDeg && (m>0 || sec>0)) return NaN;
+  const value=d+m/60+sec/3600;
+  return (hem==="S"||hem==="O") ? -value : value;
+}
+function decimalToDMSFields(value,degId,minId,secId,hemId){
+  const a=Math.abs(value);
+  let d=Math.floor(a), mf=(a-d)*60, m=Math.floor(mf), sec=(mf-m)*60;
+  if(sec>=59.9995){sec=0;m++;} if(m>=60){m=0;d++;}
+  document.getElementById(degId).value=d;
+  document.getElementById(minId).value=m;
+  document.getElementById(secId).value=sec.toFixed(2).replace(/\.?0+$/,'');
+  document.getElementById(hemId).value=value<0 ? ((hemId.startsWith("lat"))?"S":"O") : ((hemId.startsWith("lat"))?"N":"E");
+}
+function signedDMS(x,isLat=false){
+  const sign = isLat ? (x<0?"S":"N") : (x<0?"O":"E");
+  let a = Math.abs(x), deg = Math.floor(a), m = (a-deg)*60, min = Math.floor(m), sec = Math.round((m-min)*60);
+  if(sec===60){sec=0;min++;} if(min===60){min=0;deg++;}
+  return `${deg}° ${String(min).padStart(2,"0")}′ ${String(sec).padStart(2,"0")}″ ${sign}`;
+}
+function signedDM(x){
+  const sign = x < 0 ? "O" : "E";
+  let a=Math.abs(x), deg=Math.floor(a), min=Math.round((a-deg)*60);
+  if(min===60){min=0;deg++;}
+  return `${deg}° ${String(min).padStart(2,"0")}′ ${sign}`;
+}
+function datePlusOneYear(s){
+  const [y,m,d]=s.split("-").map(Number);
+  const next = new Date(Date.UTC(y+1,m-1,d));
+  if(next.getUTCMonth() !== m-1) next.setUTCDate(0);
+  return next;
+}
+function dateUTC(s){
+  const [y,m,d]=s.split("-").map(Number);
+  return new Date(Date.UTC(y,m-1,d));
+}
+function convergence(lat, lon, mc){
+  if(mc===null) return 0;
+  const p=lat*Math.PI/180, dl=(lon-mc)*Math.PI/180;
+  return Math.atan(Math.tan(dl)*Math.sin(p))*180/Math.PI;
+}
+function dibujarNortes(decl,gamma,dev){
+  if(![decl,gamma,dev].every(Number.isFinite))return;
+  const ns='http://www.w3.org/2000/svg';
+  const arcs=document.getElementById('angleArcs'),labels=document.getElementById('northLabels');
+  arcs.replaceChildren();labels.replaceChildren();
+  const add=(tag,attrs,parent,txt)=>{const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));if(txt!==undefined)el.textContent=txt;parent.appendChild(el);return el;};
+  // Exageración deliberada: rayos espaciados y valores verdaderos siempre en leyenda inferior.
+  // Mantiene el orden relativo cuando los ángulos tienen el mismo signo.
+  let g=gamma===0?0:Math.sign(gamma)*Math.max(18,Math.min(32,Math.abs(gamma)*8));
+  let d=decl===0?0:Math.sign(decl)*Math.max(44,Math.min(65,Math.abs(decl)*8));
+  if(Math.abs(d-g)<20){d=g+(decl>=gamma?25:-25);}
+  g=Math.max(-36,Math.min(36,g));d=Math.max(-67,Math.min(67,d));
+  if(Math.abs(g)<8)g=gamma<0?-23:23;
+  if(Math.abs(d-g)<19)d=d<g?g-28:g+28;
+  d=Math.max(-70,Math.min(70,d));
+  const A=[0,g,d],ids=['nTrue','nGrid','nMag'],names=['NC','NG','NM'],colors=['#15599b','#16813a','#b3261e'];
+  const pt=(a,r)=>({x:Math.sin(a*Math.PI/180)*r,y:-Math.cos(a*Math.PI/180)*r});
+  ids.forEach((id,i)=>{const e=document.getElementById(id),q=pt(A[i],185);e.setAttribute('x2',q.x);e.setAttribute('y2',q.y);e.setAttribute('stroke',colors[i]);const t=pt(A[i],224);add('text',{x:t.x,y:t.y,'text-anchor':'middle','font-size':21,'font-weight':900,fill:colors[i],stroke:'#fff','stroke-width':5,'paint-order':'stroke'},labels,names[i]);});
+  const data=[{a:0,b:g,r:54,c:'#15599b',name:'γ',val:gamma},{a:g,b:d,r:91,c:'#b3261e',name:'Δ',val:dev},{a:0,b:d,r:128,c:'#c06a0b',name:'δ',val:decl}];
+  data.forEach(o=>{const st=pt(o.a,o.r),en=pt(o.b,o.r),delta=o.b-o.a;if(Math.abs(delta)>.1)add('path',{d:`M ${st.x} ${st.y} A ${o.r} ${o.r} 0 ${Math.abs(delta)>180?1:0} ${delta>0?1:0} ${en.x} ${en.y}`,stroke:o.c,'stroke-width':4,fill:'none'},arcs);});
+  document.getElementById('angleValues').innerHTML=`<div class="angle-readout"><span style="color:#15599b">γ Convergencia: ${signedDM(gamma)}</span><span style="color:#b3261e">Δ Desviación: ${signedDM(dev)}</span><span style="color:#b66a00">δ Declinación: ${signedDM(decl)}</span></div>`;
+}
+
+async function obtenerAltura(lat,lon){
+  const altEl=document.getElementById("alt");
+  try{
+    altEl.value=""; altEl.placeholder="Consultando…";
+    const url=`https://api.opentopodata.org/v1/aster30m?locations=${lat},${lon}`;
+    const r=await fetch(url);
+    if(!r.ok) throw new Error("Elevation HTTP "+r.status);
+    const j=await r.json();
+    const elev=j?.results?.[0]?.elevation;
+    if(!Number.isFinite(elev)) throw new Error("Sin elevación");
+    altEl.value=Math.round(elev);
+    altEl.placeholder="";
+    return Number(elev);
+  }catch(e){
+    console.warn("No se pudo obtener la altura automática",e);
+    altEl.value=0; altEl.placeholder="";
+    return 0;
+  }
+}
+
+async function calculate(){
+  const lat=dmsToDecimal("latDeg","latMin","latSec","latHem",90);
+  const lon=dmsToDecimal("lonDeg","lonMin","lonSec","lonHem",180);
+  const status=document.getElementById("status");
+  if(!Number.isFinite(lat)||lat<-90||lat>90||!Number.isFinite(lon)||lon<-180||lon>180){
+    status.textContent="Revisá latitud y longitud.";status.className="status warn";return;
+  }
+  const sequence=++currentCalculation;
+  const z0=fajaPorLongitud(lon);
+  dibujarNortes(0,0,0);
+  marker.setLatLng([lat,lon]).bringToFront();
+  map.setView([lat,lon], Math.max(map.getZoom(),8));
+  marker.bindPopup('<b>📍 Punto seleccionado</b><br>Consultando valores…').openPopup();
+  const alt=await obtenerAltura(lat,lon);
+  if(sequence!==currentCalculation)return;
+  await magneticReady;
+  if(sequence!==currentCalculation)return;
+  const ds=document.getElementById("date").value;
+  const choice=document.getElementById("faja").value;
+  
+  if(!Number.isFinite(lat)||lat<-90||lat>90||!Number.isFinite(lon)||lon<-180||lon>180){
+    status.textContent="Revisá latitud y longitud.";
+    status.className="status warn"; return;
+  }
+  if(!ds){status.textContent="Seleccioná una fecha.";status.className="status warn";return;}
+
+  try{
+    if(typeof magvar!=="function") throw new Error("No se pudo cargar WMM2025: "+(magneticLoadError?.message||"módulo no disponible"));
+    const dt=dateUTC(ds);
+    const d0=magvar(lat,lon,alt/1000,dt);
+    const d1=magvar(lat,lon,alt/1000,datePlusOneYear(ds));
+    const decl=Number(d0);
+    if(!Number.isFinite(decl)||!Number.isFinite(Number(d1))) throw new Error("El modelo no devolvió resultados numéricos");
+    const annual=wrap180(Number(d1)-decl);
+
+    let mc=null, zoneText="Sin cuadrícula";
+    if(choice!=="none"){
+      const z=choice==="auto"?autoFaja(lon):Number(choice);
+      mc=fajas[z] ?? null;
+      zoneText=`Faja ${z} · MC ${Math.abs(mc)}° O`;
+      document.getElementById("faja").value = choice==="auto" ? "auto" : choice;
+    }
+    const gamma=convergence(lat,lon,mc);
+    const dev=decl-gamma;
+
+    document.getElementById("decl").textContent=signedDM(decl);
+    document.getElementById("conv").textContent=signedDM(gamma);
+    document.getElementById("dev").textContent=signedDM(dev);
+    document.getElementById("annual").textContent=signedDM(annual)+"/año";
+    document.getElementById("zone").textContent=zoneText;
+    document.getElementById("model").textContent="WMM2025";
+
+    marker.setLatLng([lat,lon]);
+    map.setView([lat,lon], Math.max(map.getZoom(),9));
+    const autoZone = fajaPorLongitud(lon);
+    const zonaCartel = autoZone ? `<br><b>Faja Gauss-Krüger: ${autoZone}</b><br>Meridiano central: ${Math.abs(fajas[autoZone])}° O` : '';
+    marker.bindPopup(`<div class="point-popup" style="min-width:285px"><div class="title">📍 Información del punto</div><table><tr><td>Latitud</td><td>${signedDMS(lat,true)}</td></tr><tr><td>Longitud</td><td>${signedDMS(lon,false)}</td></tr><tr><td>Altura</td><td>${Math.round(alt)} m s. n. m.</td></tr><tr><td>Faja</td><td>${autoZone ? autoZone : "Fuera de fajas"}</td></tr><tr><td>Meridiano central</td><td>${autoZone ? Math.abs(fajas[autoZone])+"° O" : "—"}</td></tr><tr><td>Declinación δ</td><td>${signedDM(decl)}</td></tr><tr><td>Convergencia γ</td><td>${signedDM(gamma)}</td></tr><tr><td>Desviación Δ</td><td>${signedDM(dev)}</td></tr><tr><td>Variación anual</td><td>${signedDM(annual)}/año</td></tr><tr><td>Modelo</td><td>WMM2025</td></tr></table></div>`, {maxWidth:360, autoPan:true}).openPopup();
+
+    // El diagrama usa azimuts respecto del norte verdadero.
+    // Si D es magnética respecto de verdadero, NM = D.
+    // Si gamma es convergencia NG respecto de NC, NG = gamma.
+    dibujarNortes(decl,gamma,dev);
+
+    status.textContent=`Cálculo realizado correctamente. Altura automática: ${Math.round(alt)} m s. n. m.`;
+    status.className="status ok";
+  }catch(err){
+    console.error(err);
+    status.textContent="No se pudo calcular el campo magnético: "+err.message;
+    const fz=fajaPorLongitud(lon);
+    marker.bindPopup(`<div class="point-popup"><b>📍 Punto seleccionado</b><br>Latitud: ${signedDMS(lat,true)}<br>Longitud: ${signedDMS(lon,false)}<br>Faja: ${fz??'No determinada'}<br><b>Declinación δ:</b> No disponible<br><b>Desviación Δ:</b> No disponible<br><b>Variación anual:</b> No disponible<br><small>Error de modelo: ${String(err.message).slice(0,110)}</small></div>`).openPopup();
+    status.className="status warn";
+  }
+}
+
+map.on('click', (e) => {
+  const {lat, lng:lon} = e.latlng;
+  const z = fajaPorLongitud(lon);
+  if (z === null || lat < -56 || lat > -20) {
+    document.getElementById('status').textContent = 'El punto está fuera del área de las fajas argentinas mostradas. Tocá un punto dentro de Argentina.';
+    document.getElementById('status').className = 'status warn';
+    return;
+  }
+  decimalToDMSFields(lat,'latDeg','latMin','latSec','latHem');
+  decimalToDMSFields(lon,'lonDeg','lonMin','lonSec','lonHem');
+  document.getElementById('faja').value = 'auto';
+  marker.setLatLng([lat,lon]).bringToFront();
+  map.setView([lat,lon], Math.max(map.getZoom(),7));
+  const mc=fajas[z];
+  marker.bindPopup(`<b>Faja detectada automáticamente</b><br>Faja ${z}<br>Meridiano central: ${Math.abs(mc)}° O<br><small>Calculando declinación, convergencia y desviación…</small>`)
+    .openPopup();
+  calculate();
+});
+
+document.getElementById('calc').addEventListener('click',calculate);
+document.getElementById("reset").addEventListener("click",()=>{
+  decimalToDMSFields(-34.6037,"latDeg","latMin","latSec","latHem");
+  decimalToDMSFields(-58.3816,"lonDeg","lonMin","lonSec","lonHem");
+  document.getElementById("alt").value="0";
+  document.getElementById("date").value="2026-10-13";
+  document.getElementById("faja").value="6";
+  calculate();
+});
+
+dibujarNortes(0,0,0);
+calculate();
+window.addEventListener("load",()=>setTimeout(()=>map.invalidateSize(),250));
+</script>
+  <div class="wrap"><div class="autor">Desarrollado por el SP Diego Ortiz</div></div>
+</body>
+</html>
